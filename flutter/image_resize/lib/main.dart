@@ -3,7 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-const scale = 10;
+const scale = 1;
 
 void main() async {
   var url = '/assets/assets/pixel-art.png';
@@ -44,8 +44,12 @@ void main() async {
     child: Column(
       children: [
         withTitle(
-          'original',
+          'original (quality: none)',
           Image.asset('assets/pixel-art.png', filterQuality: FilterQuality.none),
+        ),
+        withTitle(
+          'original (quality: high)',
+          Image.asset('assets/pixel-art.png', filterQuality: FilterQuality.high),
         ),
         withTitle(
           'scale (quality: none)',
