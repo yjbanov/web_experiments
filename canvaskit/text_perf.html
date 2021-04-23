@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base href="/canvaskit/">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="text_perf: CanvasKit">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <title>text_perf: CanvasKit</title>
+</head>
+<body style="padding: 0; margin: 0; overflow: hidden">
+<script type="text/javascript" src="https://unpkg.com/canvaskit-wasm@0.25.1/bin/canvaskit.js"></script>
+<script>
+  async function run() {
+    let CanvasKit = null;
+    let robotoData = null;
+    let notoData = null;
+    let imageData = null;
+
+    let cdn = 'https://storage.googleapis.com/skia-cdn/misc/';
+  
+    const ckLoaded = CanvasKitInit({locateFile: (file) => 'https://unpkg.com/canvaskit-wasm@0.25.1/bin/' + file})
+      .then((ck) => {CanvasKit = ck});
+    const loadRoboto = fetch(cdn + 'Roboto-Regular.ttf')
+      .then((response) => { return response.arrayBuffer(); })
+      .then((buffer) => { robotoData = buffer; });
+    const loadNotoSerif = fetch(cdn + 'NotoSerif-Regular.ttf')
+      .then((response) => { return response.arrayBuffer(); })
+      .then((buffer) => { notoData = buffer; });
+    const loadTestImage = fetch(cdn + 'test.png')
+      .then((response) => { return response.arrayBuffer(); })
+      .then((buffer) => { imageData = buffer; });
+  
+    await Promise.all([ckLoaded, loadRoboto, loadNotoSerif, loadTestImage]);
+
+    window.CanvasKit = CanvasKit;
+    const fontMgr = CanvasKit.FontMgr.FromData([robotoData, notoData]);
+
+    let canvas = document.createElement('canvas');
+    canvas.width = window.innerWidth * window.devicePixelRatio;
+    canvas.height = window.innerHeight * window.devicePixelRatio;
+    canvas.style.width = `${window.innerWidth}px`;
+    canvas.style.height = `${window.innerHeight}px`;
+    document.body.append(canvas);
+    const surface = CanvasKit.MakeCanvasSurface(canvas);
+
+    function drawFrame(canvas) {
+      console.log(`CanvasKit memory usage before frame: ${CanvasKit.HEAP8.length} bytes`);
+      let paint = new CanvasKit.Paint();
+      let style = new CanvasKit.ParagraphStyle({
+        textStyle: {
+          color: CanvasKit.BLACK,
+          fontFamilies: ['Roboto'],
+          fontSize: 10,
+        }
+      });
+
+      const N = 10000;
+      const rows = Math.floor(window.innerHeight / 10);
+      const columns = Math.floor(N / rows);
+      const deltaX = window.innerWidth / columns;
+
+      function _paintParagraph(text, x, y) {
+        let builder = CanvasKit.ParagraphBuilder.Make(style, fontMgr);
+        builder.addText(text);
+        let paragraph = builder.build();
+        builder.delete();
+        paragraph.layout(1000);
+        canvas.drawParagraph(paragraph, x, y);
+      }
+
+      canvas.scale(window.devicePixelRatio, window.devicePixelRatio);
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < columns; c++) {
+          const text = `(${r} ${c})`;
+          const x = c * deltaX;
+          const y = r * 10.0;
+          _paintParagraph(text, x, y);
+        }
+      }
+      console.log(`CanvasKit memory usage after frame: ${CanvasKit.HEAP8.length} bytes`);
+    }
+    surface.requestAnimationFrame(drawFrame);
+  }
+
+  run();
+</script>
+</body>
+</html>
